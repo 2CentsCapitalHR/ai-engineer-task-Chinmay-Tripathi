@@ -72,6 +72,7 @@ The system was built in multiple phases:
 
 ## Project Structure
 
+```text
 .
 ├── app.py # Main Gradio application
 ├── src/
@@ -82,7 +83,7 @@ The system was built in multiple phases:
 ├── classifier.py #Classification of document types
 ├── parser.py # Document parser
 └── requirements.txt # Python dependencies
-
+```
 ---
 
 ## Usage
