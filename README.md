@@ -126,7 +126,7 @@ python app.py
 
 ## Next Steps
 
-Possible enhancements after Phase 4:
+Possible enhancements:
 - ML-based classification training and evaluation on labelled document sets
 - Expand red flag patterns and use ML/NLP for clause classification
 - Interactive clause-by-clause review in the UI
