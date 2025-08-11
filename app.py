@@ -1,190 +1,193 @@
 import gradio as gr
 import os
-import tempfile
-import json
-from pathlib import Path
-from document_parser import DocumentParser
+import sys
+from datetime import datetime
+from typing import Dict, List, Any
 from dotenv import load_dotenv
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+from parser import DocumentParser
+from classifier import DocumentClassifier, ADGMKnowledgeBase, ComplianceChecker, RedFlagDetector
 
 load_dotenv()
 
 parser = DocumentParser()
+classifier = DocumentClassifier()
+kb = ADGMKnowledgeBase(openai_api_key=os.getenv("openai-api-key"))
+compliance_checker = ComplianceChecker()
+redflag_detector = RedFlagDetector()
 
-def analyze_documents(files):
-
+def analyze_documents(files, classification_method="ensemble"):
     if not files:
-        return {}, "No files uploaded. Please upload at least one .docx document."
-    
+        return {}, {}, "<span style='color: red;'>!! No files uploaded. Please upload at least one .docx document.</span>"
+
     results = {
-        "total_documents": len(files),
-        "processed_documents": [],
+        "processing_info": {
+            "timestamp": datetime.now().isoformat(),
+            "total_files": len(files),
+            "classification_method": classification_method,
+            "parser_version": "enhanced_v2"
+        },
+        "documents": [],
         "errors": [],
-        "summary": {}
+        "aggregate_analysis": {}
     }
-    
+    processing_log = []
     processed_count = 0
+    total_words = 0
+    document_types_found = []
+    classified_types = []
     
-    for file in files:
+    if not kb.vectorstore:
+        kb_texts = []
+        src_folder = "data/adgm_sources"
+        if os.path.isdir(src_folder):
+            for fname in os.listdir(src_folder):
+                if fname.lower().endswith(".txt"):
+                    kb_texts.append(open(os.path.join(src_folder, fname), encoding="utf-8").read())
+        if kb_texts:
+            kb.build_knowledge_base(kb_texts)
+            log_lines.append(f"** Knowledge base built from {len(kb_texts)} ADGM docs.")
+
+    processing_log.append(f"🚀 Starting analysis of {len(files)} documents...")
+
+    for idx, file in enumerate(files):
         try:
-            # Parsing the document
-            content = parser.parse_document(file.name)
-            
-            # Getting document type hints
-            doc_type_hints = parser.get_document_type_hints(content)
-            
-            # Addng to results
+            processing_log.append(f" Processing {file.name} ...")
+
+            parsed_content = parser.parse_document(file.name)
+            classification_result = classifier.classify_document(parsed_content, method=classification_method)
+            explanation = classifier.get_classification_explanation(classification_result)
+            related_refs = kb.retrieve(parsed_content["content"]["full_text"], k=2) if kb.vectorstore else []
+            flags = redflag_detector.scan(parsed_content["content"]["full_text"])
+            classified_types.append(classification_result["predicted_type"])
+
             doc_result = {
-                "filename": content['filename'],
-                "word_count": content['word_count'],
-                "paragraph_count": content['paragraph_count'],
-                "section_count": len(content['sections']),
-                "table_count": len(content['tables']),
-                "potential_document_types": doc_type_hints
+                "file_info": {
+                    "filename": parsed_content["metadata"]["filename"],
+                    "file_size_bytes": parsed_content["metadata"]["file_size"],
+                    "processing_order": idx + 1
+                },
+                "structure_analysis": {
+                    "word_count": parsed_content["statistics"]["word_count"],
+                    "paragraph_count": parsed_content["statistics"]["paragraph_count"],
+                    "section_count": parsed_content["statistics"]["section_count"],
+                    "table_count": parsed_content["statistics"]["table_count"],
+                    "sentence_count": parsed_content["statistics"]["sentence_count"],
+                    "avg_words_per_paragraph": parsed_content["statistics"]["avg_words_per_paragraph"],
+                    "document_structure": parsed_content["structure"]["document_structure"]
+                },
+                "classification": {
+                    "predicted_type": classification_result["predicted_type"],
+                    "confidence": classification_result["confidence"],
+                    "method_used": classification_result["method_used"],
+                    "explanation": explanation,
+                    "alternative_types": dict(sorted(
+                        classification_result.get("all_scores", {}).items(),
+                        key=lambda x: x[1], reverse=True
+                    )[:3])
+                },
+                "content_analysis": {
+                    "text_quality": parsed_content["analysis"].get("text_quality", {}),
+                    "legal_elements": parsed_content["analysis"].get("legal_elements", {}),
+                    "readability": parsed_content["analysis"].get("readability", {}),
+                    "document_complexity": parsed_content["analysis"].get("document_complexity", {}),
+                    "key_phrases": parsed_content["content"].get("key_phrases", [])[:5],
+                    "named_entities": parsed_content["content"].get("named_entities", [])[:5]
+                }
             }
-            
-            results["processed_documents"].append(doc_result)
+
+            doc_result["related_adgm_references"] = related_refs
+            doc_result["red_flags"] = flags
+            results["documents"].append(doc_result)
             processed_count += 1
-            
+            total_words += doc_result["structure_analysis"]["word_count"]
+            document_types_found.append(doc_result["classification"]["predicted_type"])
+            processing_log.append(
+                f"--> {file.name}: {doc_result['classification']['predicted_type']} ({doc_result['classification']['confidence']:.1%} confidence)"
+            )
+
         except Exception as e:
-            error_msg = f"Error processing {file.name}: {str(e)}"
-            results["errors"].append(error_msg)
-    
-    # Summary
-    results["summary"] = {
-        "successfully_processed": processed_count,
-        "errors": len(results["errors"]),
-        "total_words": sum([doc["word_count"] for doc in results["processed_documents"]]),
-        "most_common_document_type": get_most_common_type(results["processed_documents"])
+            error_msg = f"!! Error processing {file.name}: {str(e)}"
+            results["errors"].append({
+                "filename": file.name,
+                "error": str(e),
+                "processing_order": idx + 1
+            })
+            processing_log.append(error_msg)
+        
+    comp_result = compliance_checker.check(classified_types)
+
+    results["aggregate_analysis"] = {
+        "total_documents": processed_count,
+        "total_words": total_words,
+        "document_types_distribution": {t: document_types_found.count(t) for t in set(document_types_found)},
+        "compliance": comp_result
     }
-    
-    status_msg = f"Analysis complete! Processed {processed_count}/{len(files)} documents successfully."
-    if results["errors"]:
-        status_msg += f" {len(results['errors'])} errors occurred."
-    
-    return results, status_msg
 
-def get_most_common_type(documents):
-    type_counts = {}
-    for doc in documents:
-        for doc_type in doc["potential_document_types"]:
-            type_counts[doc_type] = type_counts.get(doc_type, 0) + 1
-    
-    if type_counts:
-        return max(type_counts, key=type_counts.get)
-    return "unknown"
+    summary_stats = {
+        "Total Docs": processed_count,
+        "Total Words": total_words,
+        "Most Common Type": max(document_types_found, key=document_types_found.count) if document_types_found else "N/A",
+        "Avg Confidence": round(sum(d["classification"]["confidence"] for d in results["documents"]) / processed_count, 3) if processed_count > 0 else 0
+    }
 
+    return results, summary_stats, comp_result,"<br>".join(processing_log)
+
+#FRONTEND - User Interface
 def create_interface():
-
-    css = """
-    .container {
-        max-width: 1200px !important;
-    }
+    custom_css = """
     .header {
         text-align: center;
-        margin-bottom: 2rem;
-    }
-    .upload-box {
-        border: 2px dashed #ccc;
-        padding: 2rem;
-        text-align: center;
+        padding: 1.5rem;
+        background: linear-gradient(90deg, #4f46e5 0%, #3b82f6 100%);
+        color: white;
         border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .metric-card {
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        text-align: center;
     }
     """
-    
-    with gr.Blocks(css=css, title="ADGM Corporate Agent", theme=gr.themes.Soft()) as interface:
-        gr.HTML("""
-        <div class="header">
-            <h1>🏛️ ADGM Corporate Agent</h1>
-            <h2>Document Intelligence for ADGM Compliance</h2>
-            <p>Upload your legal documents (.docx format) for analysis and compliance checking</p>
-        </div>
-        """)
-        
-        with gr.Tab("Document Analysis"):
-            with gr.Row():
-                with gr.Column(scale=1):
-                    gr.Markdown("### 📄 Upload Documents")
-                    
-                    file_upload = gr.File(
-                        label="Select DOCX Documents",
-                        file_types=[".docx"],
-                        file_count="multiple",
-                        elem_classes=["upload-box"]
-                    )
-                    
-                    analyze_btn = gr.Button(
-                        "🔍 Analyze Documents", 
-                        variant="primary",
-                        size="lg"
-                    )
-                    
-                    status_display = gr.Textbox(
-                        label="Status",
-                        interactive=False,
-                        placeholder="Upload documents and click 'Analyze Documents' to begin..."
-                    )
-                
-                with gr.Column(scale=2):
-                    gr.Markdown("### --> Analysis Results")
-                    
-                    results_json = gr.JSON(
-                        label="Detailed Results",
-                        show_label=True
-                    )
-        
-        with gr.Tab("About"):
-            gr.Markdown("""
-            ## About ADGM Corporate Agent
-            
-            This AI-powered legal assistant helps with:
-            
-            ### --> Current Features
-            - ... **Document Parsing**: Extract content from DOCX files
-            - ... **Document Classification**: Identify document types
-            - ... **Basic Analysis**: Word count, structure analysis
-            
-            
-            ### --> Supported Document Types
-            - Articles of Association
-            - Memorandum of Association  
-            - Incorporation Applications
-            - Board Resolutions
-            - Register of Members and Directors
-            
-            ### !! How to Use
-            1. Upload one or more .docx documents
-            2. Click "Analyze Documents"
-            3. Review the analysis results
-            4. More features coming in upcoming phases!
-            
-            ---
-            **Version**: 1 - Basic Document Processing  
-            **Status**: --> Active Development
+
+    with gr.Blocks(css=custom_css, title="ADGM Corporate Agent v2", theme=gr.themes.Default()) as demo:
+        with gr.Row():
+            gr.HTML("""
+            <div class="header">
+                <h1> ADGM Corporate Agent v2</h1>
+                <p>AI-powered analysis for ADGM legal documents with advanced ML classification & compliance checks</p>
+            </div>
             """)
-        
-        # Event handlers
-        analyze_btn.click(
-            fn=analyze_documents,
-            inputs=[file_upload],
-            outputs=[results_json, status_display],
-            show_progress=True
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                file_input = gr.File(label="📂 Upload DOCX files", file_types=[".docx"], file_count="multiple")
+                method_dropdown = gr.Dropdown(label="Classification Method", choices=["rule_based", "ensemble"], value="ensemble")
+                analyze_button = gr.Button(" Analyze Documents", variant="primary")
+
+            with gr.Column(scale=2):
+                with gr.Tab(" Summary"):
+                    summary_json = gr.JSON(label="Summary Insights")
+                with gr.Tab(" Detailed Results"):
+                    results_json = gr.JSON(label="Detailed Analysis Output")
+                with gr.Tab(" Compliance Report"):
+                    comp_json = gr.JSON(label="Compliance Report")
+                with gr.Tab(" Processing Log"):
+                    log_text = gr.HTML(label="Processing Log", elem_id="log-text")
+
+        analyze_button.click(
+            analyze_documents,
+            inputs=[file_input, method_dropdown],
+            outputs=[results_json, summary_json, comp_json, log_text]
         )
-    
-    return interface
 
-def main():
-    print("--> Starting ADGM Corporate Agent...")
-    print("... Step 1: Basic Document Processing")
-
-    app = create_interface()
-
-    app.launch(
-        server_name="0.0.0.0",  # Allow external connections
-        server_port=int(os.getenv("GRADIO_SERVER_PORT", 7860)),
-        share=False,  
-        debug=True,   
-        show_error=True
-    )
+    return demo
 
 if __name__ == "__main__":
-    main()
+    ui = create_interface()
+    ui.launch()
+
