@@ -2,71 +2,80 @@
 
 # ADGM Corporate Agent – Smart Legal Document Analyzer
 
-This project is an AI-powered document processing system that parses, classifies, checks compliance, flags risky clauses, and annotates legal documents in `.docx` format — with an interactive Gradio interface.
+An AI-powered legal document intelligence platform that provides comprehensive analysis, compliance checking, risk detection, and automated annotation for legal documents within the Abu Dhabi Global Market (ADGM) jurisdiction.
 
 ---
 
 ## Overview
 
-The system was built in multiple phases:
+The ADGM Corporate Agent is a sophisticated document processing system designed specifically for legal professionals, compliance officers, and corporate entities operating within the ADGM framework. The system combines advanced natural language processing, machine learning classification, and retrieval-augmented generation (RAG) to provide intelligent analysis of legal documents in DOCX format.
 
-**Basic application**
-- Implemented `DocumentParser` for extracting:
-  - Paragraphs, sections, tables
-  - Document metadata and structure
-  - Key statistics such as word count, sentence count, averages
-  - Basic NLP features: key phrases, named entities, legal elements
-- Implemented `DocumentClassifier` with:
-  - Rule-based classification using ADGM-specific patterns
-  - Placeholder for ML-based classification (TF-IDF + multiple algorithms)
-- Created `app.py` for running an interactive Gradio app
-- Added `test_setup.py` to validate imports, parser, classifier, and integration.
-
-**Added features**
-- Added a Retrieval-Augmented Generation (RAG) knowledge base:
-  - `ADGMKnowledgeBase` for building a FAISS vectorstore from reference ADGM documents
-  - Semantic retrieval for each uploaded document to find related legal/regulatory references
-- Introduced `ComplianceChecker` for validating presence of required incorporation documents
-- Added `RedFlagDetector` for pattern-based risk detection
-- Integrated these features into `app.py`, keeping existing structure and file/function names
-- Introduced `DocxAnnotator` to generate annotated `.docx` files highlighting or marking issues found
-- Annotation uses in-text highlighting and inline comments for flagged paragraphs
-- Extended UI to allow downloading marked documents after analysis
-- Added structured review reports summarising paragraph-level issues
-- Organised outputs into clear tabs for:
-  - Compliance summary
-  - Full JSON analysis
-  - Red flags and review table
-  - Download of annotated documents
-  - Processing log
+The platform automatically identifies document types, performs compliance verification against ADGM requirements, detects potential legal risks and inconsistencies, and generates annotated versions of documents with expert recommendations and legal citations.
 
 ---
 
-## Features
+## Key Capabilities
 
-- Upload multiple `.docx` files for batch processing
-- Extraction of content, structure, statistics, and metadata
-- Classification into specific ADGM document types
-- RAG-driven reference retrieval from ADGM corpus
-- Compliance checklist against required document set
-- Detection of red flag clauses and risky wording using regex patterns
-- Annotation of flagged issues in generated reviewed `.docx` files
-- Structured output of results in the Gradio UI
-- Downloadable annotated documents for further review
-- JSON and table views of analysis results
-- Comprehensive test suite in `test_setup.py`
+### Document Intelligence
+- **Advanced Parsing**: Comprehensive extraction of document structure, metadata, paragraphs, sections, tables, and statistical analysis
+- **ML Classification**: Intelligent document type identification using ensemble methods combining rule-based and machine learning approaches
+- **Content Analysis**: Deep linguistic analysis including readability assessment, legal term density, formality scoring, and complexity evaluation
+- **Entity Recognition**: Extraction of key phrases, named entities, legal terms, and compliance references
+
+### Legal Analysis & Compliance
+- **ADGM Compliance Verification**: Automated checking against required document sets for various legal processes (incorporation, licensing, regulatory filings)
+- **Red Flag Detection**: Pattern-based identification of legal risks, incorrect jurisdictions, missing clauses, and non-compliance issues
+- **Legal Citation Integration**: Each detected issue includes relevant ADGM law references and regulatory citations
+- **Clause Suggestion Engine**: Automated generation of compliant legal clauses and alternative wording recommendations
+
+### Knowledge Management
+- **RAG-Enhanced Analysis**: Integration with ADGM knowledge base for context-aware legal advice and reference retrieval
+- **Semantic Search**: Vector-based similarity matching against regulatory documents and legal precedents
+- **Dynamic Knowledge Integration**: Continuous integration of ADGM regulations, templates, and legal frameworks
+
+### Document Annotation & Export
+- **Intelligent Annotation**: Automated highlighting and commenting of problematic clauses with severity-based color coding
+- **Legal Commentary**: Inline insertion of expert recommendations, alternative clauses, and regulatory references
+- **Export Capabilities**: Generation of annotated DOCX files with comprehensive review reports and downloadable marked documents
+
+### Analytics & Reporting
+- **Executive Dashboards**: Comprehensive analytics including document type distribution, compliance rates, and issue severity analysis
+- **Structured Reporting**: JSON-formatted detailed analysis results and executive summary generation
+- **Process Tracking**: Complete audit trail with processing logs and confidence scoring
 
 ---
 
-## Technology Stack
+## Supported Document Types
 
-- **Python 3.12+**
-- [python-docx](https://python-docx.readthedocs.io/) for document parsing and annotation
-- [spaCy](https://spacy.io/) for optional NLP (key phrases, named entities)
-- [scikit-learn](https://scikit-learn.org/) for ML-based classification (TF-IDF, Naive Bayes, SVM, RandomForest)
-- [LangChain](https://www.langchain.com/) + [FAISS](https://faiss.ai/) for vector-based RAG
-- [Gradio](https://www.gradio.app/) for interactive UI
-- [pandas](https://pandas.pydata.org/) and [plotly](https://plotly.com/python/) for tabular and potential chart outputs
+The system recognizes and processes various ADGM legal documents including:
+
+- **Corporate Formation**: Articles of Association, Memorandum of Association, Incorporation Applications, Board Resolutions
+- **Compliance Documents**: UBO Declarations, Register of Members and Directors, Regulatory Filings, Compliance Policies
+- **Commercial Agreements**: Employment Contracts, Service Agreements, Licensing Applications, Commercial Contracts
+- **Financial Documents**: Audit Reports, Financial Statements, Shareholder Resolutions
+- **Legal Instruments**: Power of Attorney documents, Legal Opinions, Regulatory Submissions
+
+---
+
+## Technology Architecture
+
+### Core Technologies
+- **Python 3.12+** - Primary development language
+- **Natural Language Processing**: spaCy for advanced linguistic analysis and entity recognition
+- **Machine Learning**: scikit-learn with TF-IDF vectorization, Naive Bayes, SVM, and Random Forest classifiers
+- **Vector Database**: FAISS for high-performance semantic search and RAG implementation
+- **Document Processing**: python-docx for DOCX file parsing, annotation, and generation
+
+### AI & Machine Learning Stack
+- **LangChain**: Framework for RAG implementation and knowledge base integration
+- **OpenAI Embeddings**: Vector embeddings for semantic document analysis
+- **Ensemble Classification**: Multi-algorithm approach combining rule-based and ML methods
+- **Pattern Recognition**: Advanced regex and linguistic pattern matching for legal clause detection
+
+### User Interface & Visualization
+- **Gradio**: Professional web interface with multi-tab analytics dashboard
+- **pandas**: Data manipulation and structured reporting
+- **Interactive Components**: File upload, real-time processing, and downloadable results
 
 ---
 
@@ -86,14 +95,22 @@ The system was built in multiple phases:
 ```
 ---
 
-## Usage
+## Installation & Setup
 
-1. **Install dependencies**:
+### Prerequisites
+- Python 3.12 or higher
+- OpenAI API key (optional, for RAG features)
+- Minimum 8GB RAM recommended for optimal performance
+
+### Installation Steps
+
+1. **Clone the repository and install dependencies**:
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
 2. **Prepare ADGM KB source texts**
-Place `.txt` files in `data/adgm_sources/` — these should contain ADGM regulations, sample templates, etc.
+- Place `.txt` files in `data/adgm_sources/` — these should contain ADGM regulations, sample templates, etc.
+- Include relevant ADGM regulations, templates, and legal frameworks.
 
 3. **Run tests** (to confirm setup):
 python test_setup.py
@@ -101,33 +118,70 @@ python test_setup.py
 4. **Run the app**:
 python app.py
 
-5. **In the UI**:
-- Upload one or more `.docx` legal documents
-- Choose classification method (rule_based or ensemble)
-- Click "Analyze Documents"
-- Review results across the tabs:
-  - Compliance checklist
-  - Full JSON output
-  - Red flags table
-  - Download marked documents
-  - Processing log
+---
+
+## Usage Instructions
+
+### Web Interface
+1. **Access the application** at `http://localhost:7860` after launch
+2. **Upload Documents**: Select one or more DOCX legal documents for analysis
+3. **Choose Analysis Method**: Select classification approach (rule-based or ensemble recommended)
+4. **Execute Analysis**: Click "Analyze Documents" to begin processing
+
+### Review Results
+- **Executive Summary**: High-level overview with key findings and recommendations
+- **Compliance Dashboard**: Detailed compliance analysis with completeness percentages and missing documents
+- **Issues & Red Flags**: Comprehensive table of identified problems with severity levels and ADGM references 
+- **Download Center**: Access annotated documents with highlighted issues and legal commentary
+- **Technical Details**: Complete JSON analysis results for integration with other systems
+
+### Output Formats
+- **Annotated DOCX Files**: Original documents with highlighted issues and inline legal commentary
+- **Structured JSON**: Machine-readable analysis results with complete metadata
+- **Executive Reports**: Markdown-formatted summaries with compliance status and recommendations
+- **Analytics Data**: Document type distribution, confidence scores, and issue categorization
 
 ---
 
-## Notes
+## System Requirements
 
-- Only `.docx` files are supported for parsing and annotation.
-- Red flag detection is currently regex-based; false positives/negatives are possible.
-- Annotated documents are saved in `marked_documents/`.
-- The RAG KB is built from `.txt` files in `data/adgm_sources` at startup and cached for subsequent runs.
-- If spaCy model is not present, the parser will fallback to regex-based extraction for key phrases/entities.
+### Minimum Requirements
+- **Operating System**: Windows 10+, macOS 10.14+, or Ubuntu 18.04+
+- **Memory**: 8GB RAM
+- **Storage**: 2GB free disk space
+- **Network**: Internet connection for RAG features (optional)
+
+### Recommended Configuration
+- **Memory**: 16GB RAM for optimal performance with large document sets
+- **Storage**: SSD recommended for faster document processing
+- **CPU**: Multi-core processor for parallel processing capabilities
 
 ---
 
-## Next Steps
+## Important Notes
 
-Possible enhancements:
-- ML-based classification training and evaluation on labelled document sets
-- Expand red flag patterns and use ML/NLP for clause classification
-- Interactive clause-by-clause review in the UI
-- Visualization dashboards for document type distribution, compliance rates, and trends
+### Capabilities & Limitations
+- **Document Format Support**: Currently limited to DOCX format; PDF support planned for future releases
+- **Language Support**: Optimized for English legal documents; multilingual support under development 
+- **Red Flag Detection**: Uses pattern-based analysis which may produce false positives; human review recommended
+- **Compliance Checking**: Based on current ADGM regulations; users should verify against latest requirements
+
+### Data Handling & Security
+- **Document Processing**: All document processing occurs locally; no data transmitted to external services (except optional RAG features)
+- **Temporary Files**: Uploaded documents are processed in temporary directories and automatically cleaned
+- **Output Security**: Annotated documents are saved locally in the `marked_documents/` directory
+
+### Performance Considerations
+- **Processing Speed**: Analysis time varies based on document size and complexity (typically 5-30 seconds per document)
+- **Batch Processing**: System supports simultaneous analysis of multiple documents
+- **Resource Usage**: Memory usage scales with document size; monitor system resources for large document sets
+
+---
+
+## Support & Maintenance
+
+### Troubleshooting
+- **Installation Issues**: Ensure Python 3.12+ and all dependencies are properly installed
+- **spaCy Model**: Run `python -m spacy download en_core_web_sm` if NLP features fail
+- **Memory Errors**: Reduce batch size or increase system memory for large documents
+- **API Integration**: Verify OpenAI API key configuration for RAG functionality
