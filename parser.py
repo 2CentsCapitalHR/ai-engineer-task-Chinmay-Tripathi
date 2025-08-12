@@ -1,14 +1,8 @@
-"""
-Document Parser for Phase 2 – Fixed Version
-Enhanced extraction, structure, and analysis for ADGM Corporate Agent
-"""
-
 from docx import Document
-import re
-import os
+import re, os
 from typing import Dict, List, Any
-import logging
 from datetime import datetime
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,7 +12,6 @@ class DocumentParser:
         self.supported_formats = ['.docx']
         self.nlp = None
         self._load_nlp_model()
-
         self.section_patterns = {
             'article': r'article\s+(\d+)\.?\s*(.+)',
             'clause': r'clause\s+(\d+)\.?\s*(.+)',
@@ -29,7 +22,6 @@ class DocumentParser:
             'resolved': r'(?:resolved|it is resolved)\s*[,;:]?\s*(.+)',
             'definitions': r'definitions?\s*[,;:]?\s*(.+)?'
         }
-
         self.type_indicators = {
             'articles_of_association': {
                 'primary': ['articles of association', 'company governance', 'board of directors'],
@@ -72,21 +64,17 @@ class DocumentParser:
         try:
             import spacy
             self.nlp = spacy.load("en_core_web_sm")
-            logger.info("spaCy model loaded successfully")
-        except (ImportError, OSError):
-            logger.warning("spaCy not available — using basic phrase extraction")
+        except Exception:
             self.nlp = None
 
     def parse_document(self, file_path: str) -> Dict[str, Any]:
         try:
             doc = Document(file_path)
             filename = os.path.basename(file_path)
-
             paragraphs = self._extract_paragraphs(doc)
             tables = self._extract_tables(doc)
             sections = self._identify_sections(paragraphs)
             document_structure = self._analyze_document_structure(paragraphs, sections)
-
             full_text = ' '.join([p['text'] for p in paragraphs])
             section_texts = [
                 sec['title'] + " " + " ".join(p['text'] for p in sec['paragraphs'])
@@ -105,7 +93,6 @@ class DocumentParser:
                 file_size = os.path.getsize(file_path)
             except Exception:
                 file_size = 0
-
             return {
                 'metadata': {
                     'filename': filename,
@@ -194,7 +181,7 @@ class DocumentParser:
 
     def _identify_legal_elements(self, text):
         return {
-            'legal_patterns': {'obligations': {'count': text.lower().count('shall')}} ,
+            'legal_patterns': {'obligations': {'count': text.lower().count('shall')}},
             'compliance_indicators': [],
             'contract_elements': {'parties': 'party' in text.lower(), 'terms': 'terms' in text.lower()},
             'risk_indicators': []
@@ -224,7 +211,6 @@ class DocumentParser:
         if self.nlp: return [{'text': e.text, 'label': e.label_} for e in self.nlp(text).ents]
         return [{'text': t, 'label': 'UNKNOWN'} for t in list(set(re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', text)))]
 
-
-def parse_document(file_path: str): 
+def parse_document(file_path: str):
     return DocumentParser().parse_document(file_path)
 

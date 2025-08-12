@@ -1,8 +1,3 @@
-"""
-Document Classifier for Phase 2
-Machine Learning-based classification with TF-IDF and multiple algorithms
-"""
-
 import re
 import pickle
 import os
@@ -15,6 +10,12 @@ from sklearn.ensemble import RandomForestClassifier
 from langchain_community.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from docx import Document as DocxDocument
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.enum.text import WD_COLOR_INDEX
+import tempfile, shutil
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,10 @@ class DocumentClassifier:
     def _has_numbered_sections(self, sections):
         return any(re.match(r'^\d+\.', section.get('title', '')) for section in sections)
 
+def classify_document(document_content, method: str = 'ensemble'):
+    classifier = DocumentClassifier()
+    return classifier.classify_document(document_content, method)
+
 class ADGMKnowledgeBase:
     def __init__(self, openai_api_key=None):
         self.embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key) if openai_api_key else None
@@ -334,7 +339,21 @@ class RedFlagDetector:
                 flags.append(pat)
         return flags
 
-def classify_document(document_content, method: str = 'ensemble'):
-    classifier = DocumentClassifier()
-    return classifier.classify_document(document_content, method)
+class DocxAnnotator:
+    def add_comments(self, original_file_path, paragraphs_and_comments):
+        doc = DocxDocument(original_file_path)
+        for pc in paragraphs_and_comments:
+            para_idx = pc['paragraph_index']
+            comment = pc['comment']
+            if para_idx < len(doc.paragraphs):
+                paragraph = doc.paragraphs[para_idx]
+                for run in paragraph.runs:
+                    run.font.highlight_color = WD_COLOR_INDEX.YELLOW
+                paragraph.add_run(f" [Issue: {comment}]").italic = True
+        marked_dir = 'marked_documents'
+        if not os.path.exists(marked_dir):
+            os.makedirs(marked_dir)
+        marked_file = os.path.join(marked_dir, os.path.splitext(os.path.basename(original_file_path))[0] + "_REVIEWED.docx")
+        doc.save(marked_file)
+        return marked_file
 
